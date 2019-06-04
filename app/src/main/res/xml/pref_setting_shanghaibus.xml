@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory android:title="ShanghaiBus Basic Setting">
+        <ListPreference
+            android:entries="@array/pref_uoa_titles"
+            android:entryValues="@array/pref_uoa_values"
+            android:key="KEY_HCM_USER_AGENT_LIST"
+            android:title="@string/pref_title_uoa"
+            android:negativeButtonText="@null"
+            android:positiveButtonText="@null"
+            android:defaultValue="Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1"
+            android:summary="%s"/>
+        <EditTextPreference
+            android:title="公交车"
+            android:defaultValue="69"
+            android:key="KEY_BUS_NO"
+            android:selectAllOnFocus="true"
+            android:dialogTitle="Input Bus Number"
+            android:hint="Bus No."
+            android:summary="Bus No."/>
+        <ListPreference
+            android:entries="@array/pref_bus_directions_titles"
+            android:entryValues="@array/pref_bus_directions_values"
+            android:key="KEY_BUS_DIRECTIONS_LIST"
+            android:title="@string/pref_title_bus_direction"
+            android:defaultValue="1"
+            android:summary="%s"/>
+        <SwitchPreference
+            android:defaultValue="false"
+            android:title="检查所有站点"
+            android:icon="@drawable/bus"
+            android:key="KEY_BUS_ENABLE_ALL" />
+        <EditTextPreference
+            android:title="停靠站点序号"
+            android:defaultValue="4"
+            android:enabled="true"
+            android:key="KEY_BUS_STOP_ID"
+            android:selectAllOnFocus="true"
+            android:dialogTitle="Input Bus Number"
+            android:hint="Bus No."
+            android:summary="2"/>
+
+    </PreferenceCategory>
+</PreferenceScreen>
