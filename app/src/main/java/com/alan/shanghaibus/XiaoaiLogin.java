@@ -16,7 +16,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
-import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -52,7 +51,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class MainActivity extends AppCompatActivity {
+public class XiaoaiLogin extends AppCompatActivity {
     private CharSequence mTitle;
     private ListView infoListView;
     private List<Map<String, Object>> list = new ArrayList<>();
@@ -66,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_login);
         toolbar = findViewById(R.id.toolbar);
 
 
@@ -79,24 +78,6 @@ public class MainActivity extends AppCompatActivity {
             direction_m = "下行";
         }
 
-        //if(Config.debug) Log.i("-----Bus Route", busNo + "路 " + direction_m);
-        //设置主标题和颜色
-        //toolbar.setLogo(R.drawable.bus);
-        toolbar.setTitle(busNo + "路 " + direction_m);
-
-        setSupportActionBar(toolbar);
-        // 显示公交信息的ListView
-        infoListView = findViewById(R.id.info_list_view);
-
-        FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                //Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG).setAction("Action", null).show();
-                refresh();
-            }
-        });
-        //refresh();
     }
 
     protected void onStart() {
@@ -111,23 +92,8 @@ public class MainActivity extends AppCompatActivity {
         if(Config.debug) Log.i("-----Bus Route", busNo + "路 " + direction_m);
         //设置主标题和颜色
 
-        //toolbar.setLogo(R.drawable.bus);
-        toolbar.setTitle(busNo + "路 " + direction_m);
-
-        setSupportActionBar(toolbar);
     }
 
-    public boolean saveDirection(String domainName) {
-        SharedPreferences.Editor editor = getSharedPreferences("1024", MODE_PRIVATE).edit();
-        editor.putString("domain", domainName);
-        return editor.commit();
-    }
-
-    public String loadDirection() {
-        //SharedPreferences editor = getSharedPreferences("1024", MODE_PRIVATE);
-        //return editor.getString("domain", "www.t66y.com");
-        return preferences.getString(Config.KEY_BUS_DIRECTIONS_LIST, "1");
-    }
 
     // 将数据填充到ListView中
     private void show() {
@@ -549,21 +515,9 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
 
-    public void toXiaoaiTTS(){
-        /* 新建一个Intent对象 */
-        Intent intent = new Intent();
-        intent.putExtra("name","XiaoAi");
-        /* 指定intent要启动的类 */
-        intent.setClass(MainActivity.this, XiaoaiTTS.class);
-        /* 启动一个新的Activity */
-        MainActivity.this.startActivity(intent);
-        /* 关闭当前的Activity */
-        MainActivity.this.finish();
-    }
-
     // 刷新
     public void refresh() {
-        if(isNetworkAvailable(MainActivity.this)) {
+        if(isNetworkAvailable(XiaoaiLogin.this)) {
             // 显示“正在刷新”窗口
             dialog = new ProgressDialog(this);
             dialog.setMessage("正在刷新...");
@@ -611,9 +565,8 @@ public class MainActivity extends AppCompatActivity {
                 refresh();
                 break;
             case R.id.action_toggle_direction:
-                Toast.makeText(MainActivity.this, "换向按钮 TBD", Toast.LENGTH_SHORT).show();
+                Toast.makeText(XiaoaiLogin.this, "换向按钮 TBD", Toast.LENGTH_SHORT).show();
                 //refresh();
-                toXiaoaiTTS();
                 break;
             case R.id.action_settings:
                 //popUpMyOverflow();

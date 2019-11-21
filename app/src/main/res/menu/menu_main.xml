@@ -4,18 +4,17 @@
     tools:context="com.alan.shanghaibus.MainActivity">
     <!--添加一条item-->
     <item
-        android:id="@+id/action_edit"
+        android:id="@+id/action_refresh"
         android:icon="@drawable/ic_action_refresh"
-        android:orderInCategory="80"
-        android:title="查找"
+        android:orderInCategory="70"
+        android:title="Refresh"
         app:showAsAction="always"/>
-
     <item
-        android:id="@+id/action_share"
-        android:icon="@drawable/abc_ic_menu_share_mtrl_alpha"
-        android:orderInCategory="90"
-        android:title="分享"
-        app:showAsAction="ifRoom"/>
+        android:id="@+id/action_toggle_direction"
+        android:icon="@android:drawable/ic_menu_revert"
+        android:orderInCategory="80"
+        android:title="换向"
+        app:showAsAction="always" />
 
     <item
         android:id="@+id/action_settings"

@@ -220,7 +220,8 @@ public class ShanghaiBusPreferenceFragment extends PreferenceFragment implements
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
         switch(key){
 
-            case Config.KEY_BUS_ENABLE_ALL: {
+            case Config.KEY_BUS_ENABLE_ALL:
+            {
                 Preference connectionPref = findPreference(key);
                 Preference bus_stop_id = findPreference(Config.KEY_BUS_STOP_ID);
                 boolean checked = ((SwitchPreference) connectionPref).isChecked();

@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.alan.shanghaibus">
-
     <!-- 配置权限 -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -15,6 +14,12 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
+            android:name=".XiaoaiLogin"
+            android:label="XiaoaiLogin"></activity>
+        <activity
+            android:name=".XiaoaiTTS"
+            android:label="XiaoaiTTS"></activity>
+        <activity
             android:name=".MainActivity"
             android:label="@string/app_name"
             android:theme="@style/AppTheme.NoActionBar">
@@ -24,7 +29,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:label="ShanghaiBusPreference" android:name=".ShanghaiBusPreferencesActivity" />
+        <activity
+            android:name=".ShanghaiBusPreferencesActivity"
+            android:label="ShanghaiBusPreference" />
     </application>
 
 </manifest>
