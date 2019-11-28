@@ -39,50 +39,7 @@ public class ShanghaiBusPreferenceFragment extends PreferenceFragment implements
 
         EditTextPreference editTextPreference_BUS_NO = (EditTextPreference) findPreference(Config.KEY_BUS_NO);
         EditTextPreference editTextPreference_BUS_STOP_ID = (EditTextPreference) findPreference(Config.KEY_BUS_STOP_ID);
-        /*
-        final ListPreference lp_bus = setListPreferenceData((ListPreference) findPreference(Config.KEY_BUS_DIRECTIONS_LIST), getActivity());
-        lp_bus.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-            @Override
-            public boolean onPreferenceClick(Preference preference) {
-                setListPreferenceData(lp_bus, getActivity());
-                return false;
-            }
-        });
-        */
-        //ListPreference listPreference_Devices = (ListPreference) findPreference(Config.KEY_USER_AGENT_LIST);
-        //final ListPreference dynamicListPreference = (ListPreference) findPreference(Config.KEY_HCM_USER_LIST);
-/*
-        final ListPreference lp = MutableListPreference((ListPreference) findPreference(Config.KEY_HCM_USER_LIST), getContext());
-        //final ListPreference lp = setListPreferenceData((ListPreference) findPreference(Config.KEY_HCM_USER_LIST), getActivity());
-        lp.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-            @Override
-            public boolean onPreferenceClick(Preference preference) {
-                setListPreferenceData(lp, getActivity());
-                return false;
-            }
-        });
 
-        String auth_code = editTextPreference_AUTH_CODE.getText();
-        if("0".equals(String.valueOf(auth_code))) {
-            editTextPreference_AUTH_CODE.setSummary("N/A");
-        } else {
-            editTextPreference_AUTH_CODE.setSummary(auth_code);
-        }
-
-        String LONGITUDE = editTextPreference_LONGITUDE.getText();
-        if("0".equals(String.valueOf(LONGITUDE))) {
-            editTextPreference_LONGITUDE.setSummary("N/A");
-        } else {
-            editTextPreference_LONGITUDE.setSummary(LONGITUDE);
-        }
-
-        String LATITUDE = editTextPreference_LATITUDE.getText();
-        if("0".equals(String.valueOf(LONGITUDE))) {
-            editTextPreference_LATITUDE.setSummary("N/A");
-        } else {
-            editTextPreference_LATITUDE.setSummary(LATITUDE);
-        }
-*/
         String bus_no = editTextPreference_BUS_NO.getText();
         if("0".equals(String.valueOf(bus_no))) {
             editTextPreference_BUS_NO.setSummary("69");
@@ -242,7 +199,6 @@ public class ShanghaiBusPreferenceFragment extends PreferenceFragment implements
                 Preference connectionPref = findPreference(key);
                 String new_code = sharedPreferences.getString(key, "");
                 connectionPref.setSummary(new_code);
-
                 editor.commit();
                 break;
             }

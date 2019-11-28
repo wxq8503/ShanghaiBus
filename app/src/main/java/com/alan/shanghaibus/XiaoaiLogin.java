@@ -1,48 +1,38 @@
 package com.alan.shanghaibus;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
-import android.app.AlertDialog;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.app.ProgressDialog;
-import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.preference.PreferenceManager;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
+import android.text.Editable;
+import android.text.TextUtils;
+import android.text.TextWatcher;
+import android.util.Base64;
 import android.util.Log;
-import android.view.LayoutInflater;
+import android.view.KeyEvent;
 import android.view.View;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.ViewGroup;
-import android.widget.ListView;
-import android.widget.SimpleAdapter;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
 
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import okhttp3.FormBody;
 import okhttp3.Headers;
@@ -51,373 +41,560 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class XiaoaiLogin extends AppCompatActivity {
-    private CharSequence mTitle;
-    private ListView infoListView;
-    private List<Map<String, Object>> list = new ArrayList<>();
-    private ProgressDialog dialog;
-    private Toolbar toolbar;
-    private TextView mTextMessage;
-    private SharedPreferences preferences;
-    private SharedPreferences.Editor editor;
-    private String TAG = MainActivity.class.getSimpleName();
+/**
+ * 这个就是登陆界面的activity
+ * 注册  登陆   忘记密码    要考虑这几种情况 转其他activity
+ */
 
+public class XiaoaiLogin extends AppCompatActivity implements View.OnClickListener,View.OnLongClickListener{
+    //声明控件对象
+    private EditText et_name;
+    private EditText et_pass;
+    private Button mLoginButton;
+    private Button mLoginError;
+    private Button mRegister;
+    private Button ONLYTEST;
+    private Button bt_username_clear;
+    private Button bt_pwd_clear;
+    private Button bt_pwd_eye;
+    private TextWatcher username_watcher;
+    private TextWatcher password_watcher;  //文本监视器
+
+    int slectIndx = 1;
+    int tempSelect = slectIndx;
+    private boolean flase;
+    boolean isReLogin = flase;
+    private int SERVER_FLAG = 0;
+    private RelativeLayout countryselsct;
+    private TextView county_phone_sn,countryName;
+
+    private final static int LOGIN_ENABLE = 0x01;
+    private final static int LOGIN_UNABLF = 0x02;
+    private final static int PASS_ERROR =  0x03;
+    private final static int NAME_ERROR = 0x04;  //上面是消息的常量值
+
+    //主布局中定义了一个按钮和文本
+    LoginTask loginTask;
+
+    private String TAG = XiaoaiLogin.class.getSimpleName();
+
+    private String xiaoai_cookie;
+
+    @SuppressLint("HandlerLeak")
+    final Handler UiMangerHandler = new Handler(){        //处理UI的操作的
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what){
+                case LOGIN_ENABLE:
+                    mLoginButton.setClickable(true);
+                    break;
+                case LOGIN_UNABLF:
+                    mLoginButton.setClickable(false);
+                    break;
+                case PASS_ERROR:
+                    break;
+                case NAME_ERROR:
+                    break;
+
+            }
+            super.handleMessage(msg);
+        }
+    };
+
+    @SuppressLint("WrongViewCast")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_login);
-        toolbar = findViewById(R.id.toolbar);
+        setContentView(R.layout.login);
 
+        et_name = findViewById(R.id.username);
+        et_pass = findViewById(R.id.password);
+        bt_username_clear = findViewById(R.id.bt_usename_clear);
+        bt_pwd_clear = findViewById(R.id.bt_pwd_clear);
+        bt_pwd_eye = findViewById(R.id.bt_pwd_eyes);
 
-        preferences = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+        bt_username_clear.setOnClickListener(this);
+        bt_pwd_eye.setOnClickListener(this);
+        bt_pwd_clear.setOnClickListener(this);
+        initWatcher();
 
-        String busNo = preferences.getString(Config.KEY_BUS_NO, "69");
-        String bus_direction = preferences.getString(Config.KEY_BUS_DIRECTIONS_LIST, "1");; //O 上行，1下行，默认0
-        String direction_m = "上行";
-        if(bus_direction.compareTo("1")==0){
-            direction_m = "下行";
+        mLoginButton = findViewById(R.id.login);
+        mLoginError  = findViewById(R.id.login_error);
+        mRegister    = findViewById(R.id.register);
+
+        mLoginButton.setOnClickListener(this);
+        mLoginError.setOnClickListener(this);
+        mRegister.setOnClickListener(this);
+
+    }
+    private void initWatcher(){
+        username_watcher = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+                et_pass.setText("");
+                if (editable.toString().length()>0){
+                    bt_username_clear.setVisibility(View.VISIBLE);
+                }else{
+                    bt_username_clear.setVisibility(View.INVISIBLE);
+                }
+
+            }
+        };
+        password_watcher = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+
+                if (editable.toString().length()>0){
+                    bt_pwd_clear.setVisibility(View.VISIBLE);
+                }else{
+                    bt_pwd_clear.setVisibility(View.INVISIBLE);
+                }
+
+            }
+        };
+    }
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()){
+            //登陆activity
+            case R.id.login:
+                login(et_name.getText().toString(),
+                        et_pass.getText().toString());
+                break;
+            //忘记密码
+            case R.id.login_error:
+                break;
+            //注册
+            case R.id.register:
+                break;
+
         }
-
     }
 
-    protected void onStart() {
-        super.onStart();
-        String busNo = preferences.getString(Config.KEY_BUS_NO, "69");
-        String bus_direction = preferences.getString(Config.KEY_BUS_DIRECTIONS_LIST, "1");; //O 上行，1下行，默认0
-        String direction_m = "上行";
-        if(bus_direction.compareTo("1")==0){
-            direction_m = "下行";
+    private void login(String username, String password){
+        //步骤3:创建AsyncTask子类的实例
+        //注意每次需new一个实例,新建的任务只能执行一次,否则会出现异常
+        loginTask = new LoginTask();
+        XiaoaiUser user = new XiaoaiUser(username, password);
+        //步骤4:调用AsyncTask子类的实例的execute(Params... params)方法执行异步任务
+        loginTask.execute(user);
+    }
+
+    private static class XiaoaiUser {
+        String username;
+        String password;
+
+        XiaoaiUser(String username, String password) {
+            this.username = username;
+            this.password = password;
         }
-
-        if(Config.debug) Log.i("-----Bus Route", busNo + "路 " + direction_m);
-        //设置主标题和颜色
-
     }
 
+    /*步骤1：创建AsyncTask的子类，并为三个泛型参数制定类型
+    在特定场合下，并不是所有类型都被使用，如果没有被使用，可以用java.lang.Void类型代替
+    //三种泛型类型分别代表
+        启动任务执行的输入参数:String类型
+        后台任务执行的进度：Integer类型
+        后台计算结果的类型：String类型*/
+    private class LoginTask extends AsyncTask<XiaoaiUser, Integer, Boolean> {
 
-    // 将数据填充到ListView中
-    private void show() {
-        if(list.isEmpty()) {
-            TextView message = findViewById(R.id.message);
-            message.setText("目前没有信息");
-        } else {
-            SimpleAdapter adapter = new SimpleAdapter(this, list, R.layout.my_list_item,
-                    new String[]{"item", "station", "time"},
-                    new int[]{R.id.item, R.id.station, R.id.time});
-            infoListView.setAdapter(adapter);
-        }
-        dialog.dismiss();  // 关闭窗口
-    }
-
-    private void addNotification(String showText) {
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext());
-        builder.setSmallIcon(R.drawable.settings_ic_bus);
-        builder.setContentTitle("Shanghai Bus");
-        builder.setContentText(showText);
-        builder.setContentInfo("Info");
-
-        Intent notificationIntent = new Intent(getApplicationContext(), MainActivity.class);
-        PendingIntent contentIntent = PendingIntent.getActivity(getApplicationContext(), 0, notificationIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT);
-        builder.setContentIntent(contentIntent);
-
-        // Add as notification
-        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        manager.notify(0, builder.build());
-    }
-
-    Runnable runnable = new Runnable() {
+        //步骤2. 根据需要，实现AsyncTask的方法
+        //onPreExecute方法用于在执行后台任务前做一些UI操作
         @Override
-        public void run() {
-            String user_agent_default = "Mozilla/5.0 (Linux; Android 5.1; SM-J5008 Build/LMY47O; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/53.0.2785.49 Mobile MQQBrowser/6.2 TBS/043613 Safari/537.36 MicroMessenger/6.5.23.1180 NetType/WIFI Language/zh_CN MicroMessenger/6.5.23.1180 NetType/WIFI Language/zh_CN";
-            final  String user_agent = preferences.getString(Config.KEY_USER_AGENT_LIST, user_agent_default);
-            //String authorization = preferences.getString("KEY_AUTH_CODE", "N/A");
-            String busNo;
-            busNo = preferences.getString(Config.KEY_BUS_NO, "69");
-            busNo = busNo + "路";
-            String bus_stop_id;
-            bus_stop_id = preferences.getString(Config.KEY_BUS_STOP_ID, "1");
-            //Preference connectionPref = findPreference(Config.KEY_BUS_ENABLE_ALL);
-            boolean check_all =  preferences.getBoolean(Config.KEY_BUS_ENABLE_ALL, false);
+        protected void onPreExecute() {
+            //text.setText("加载中");
+        }
 
-            //if(Config.debug) Log.i("-----Preference Setting Check All", checked);
+        //doInBackground方法内部执行后台任务,不可在此方法内修改UI
+        @Override
+        protected Boolean doInBackground(XiaoaiUser... user) {
+            String username = user[0].username;
+            String password = user[0].password;
+            boolean Login_result = Login_TSK(username, password);
+            return Login_result;
+        }
 
-            String bus_direction; //O 上行，1下行，默认0
-            bus_direction = preferences.getString(Config.KEY_BUS_DIRECTIONS_LIST, "1");
-            String bus_sid = "62edeaac8b61a263106c09b3fdf9d6de";
+        public Boolean Login_TSK(String username, String password){
+            try {
+                HashMap<String, String> sign = getLoginSign();
+                if(sign == null) {
+                    if (Config.debug) Log.i("-----Login Error - getLoginSign", "");
+                    return false;
+                }
+                if(sign.isEmpty()) {
+                    if (Config.debug) Log.i("-----Login Error - getLoginSign", "");
+                    return false;
+                }
+                if(sign == null || sign.isEmpty()) {
+                    if (Config.debug) Log.i("-----Login Error - getLoginSign", "");
+                    return false;
+                }
 
-            String url_homepage = "https://shanghaicity.openservice.kankanews.com/";
-            String query_sid_url = "https://shanghaicity.openservice.kankanews.com/public/bus/get";
-            String query_stop_url = "https://shanghaicity.openservice.kankanews.com/public/bus/Getstop";
-            String query_router_details_url = "https://shanghaicity.openservice.kankanews.com/public/bus/mes/sid/";
-            String query_router_url = "https://shanghaicity.openservice.kankanews.com/public/bus";
+                if(sign.equals("failure")){
+                    return false;
+                }
+                HashMap<String, String> authInfo = serviceAuth(sign, username, password);
+                if(authInfo == null) {
+                    if (Config.debug) Log.i("-----Login Error - serviceAuth", "");
+                    return false;
+                }
+                if(authInfo.isEmpty()) {
+                    if (Config.debug) Log.i("-----Login Error - serviceAuth", "");
+                    return false;
+                }
+                if(authInfo == null || authInfo.isEmpty()) {
+                    if (Config.debug) Log.i("-----Login Error - serviceAuth", "");
+                    return false;
+                }
 
+                if (authInfo.get("userId") .equals("failure")) {
+                    if (Config.debug) Log.i("-----Login Error", authInfo.get("desc"));
+                    return false;
+                }
+                String serviceToken = loginMiAi(authInfo);
+                if (serviceToken == "401") {
+                    if (Config.debug) Log.i("-----Login Error", serviceToken);
+                    return false;
+                }
+                xiaoai_cookie = getAiCookie(authInfo.get("userId"), serviceToken);
+                if (Config.debug) Log.i("-----Cookie", xiaoai_cookie);
+
+                SharedPreferences settings = getSharedPreferences("XiaoAiUserInfo", 0);
+                SharedPreferences.Editor editor = settings.edit();
+                editor.putString("username", username);
+                editor.putString("password", password);
+                editor.putString("cookie", xiaoai_cookie);
+                //editor.putString("livedeviceId", devices);
+                editor.commit();
+            }catch (Exception e){
+                if (Config.debug) Log.i("-----Login failured", "");
+                return false;
+            }
+            return true;
+        }
+
+        private String md5(String string) {
+            if (TextUtils.isEmpty(string)) {
+                return "";
+            }
+            MessageDigest md5 = null;
+            try {
+                md5 = MessageDigest.getInstance("MD5");
+                byte[] bytes = md5.digest(string.getBytes());
+                String result = "";
+                for (byte b : bytes) {
+                    String temp = Integer.toHexString(b & 0xff);
+                    if (temp.length() == 1) {
+                        temp = "0" + temp;
+                    }
+                    result += temp;
+                }
+                return result;
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
+            }
+            return "";
+        }
+
+        private byte[] encryptToSHA(String info) {
+            byte[] digesta = null;
+            try {
+                MessageDigest alga = MessageDigest.getInstance("SHA-1");
+                alga.update(info.getBytes());
+                digesta = alga.digest();
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
+            }
+            return digesta;
+        }
+
+        private String getSHA(String val) throws NoSuchAlgorithmException{
+            MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
+            sha1.update(val.getBytes());
+            byte[] m = sha1.digest();//加密
+            return getString(m);
+        }
+
+        private String getString(byte[] b){
+            StringBuffer sb = new StringBuffer();
+            for(int i = 0; i < b.length; i ++){
+                sb.append(b[i]);
+            }
+            return sb.toString();
+        }
+
+        private String byte2hex(byte[] b) {
+            String hs = "";
+            String stmp = "";
+            for (int n = 0; n < b.length; n++) {
+                stmp = (java.lang.Integer.toHexString(b[n] & 0XFF));
+                if (stmp.length() == 1) {
+                    hs = hs + "0" + stmp;
+                } else {
+                    hs = hs + stmp;
+                }
+            }
+            return hs;
+        }
+
+        private static final String ALLOWED_CHARACTERS ="0123456789qwertyuiopasdfghjklzxcvbnmZXCVBNMASDFGHJKLPOIUYTREWQ_";
+
+        //Step 1: Get Login Sign
+        private HashMap<String, String> getLoginSign(){
+            HashMap<String, String> hashMap =  new HashMap<>();
+            String SERVICE_LOGIN_URL = "https://account.xiaomi.com/pass/serviceLogin?sid=micoapi&_json=true";
+
+            if(Config.debug) Log.i("-----TTS 1 Get Login Sign", "Get Login Sign");
 
             OkHttpClient.Builder mOkHttpClientBuilder = new OkHttpClient.Builder();
             mOkHttpClientBuilder.cookieJar(new MyCookieJar());
             OkHttpClient client_home_page = mOkHttpClientBuilder.build();
-            //final OkHttpClient client_home_page = mOkHttpClientBuilder.build();
 
-            //Step 1: Visit Home Page
-            if(Config.debug) Log.i("-----Bus Step 1", "Visit Home Page");
-            Request request = new Request.Builder()
-                    .url(url_homepage)
-                    .addHeader("User-Agent", user_agent)
-                    .get()
-                    .build();
+            String url_service_login = SERVICE_LOGIN_URL;
+            if(Config.debug) Log.i("-----TTS 1 send Reponse URL", url_service_login);
 
-            try {
-                Response response_get_cookie = client_home_page.newCall(request).execute();
-                //if(Config.debug) Log.i("-----send Reponse Body - Homepage", response_get_cookie.body().string());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
             Headers.Builder headersBuilder;
             Headers requestHeaders;
-
-            //Step 2: Get SID for router
-            if(Config.debug) Log.i("-----Bus Step 2", "Get SID for router");
             headersBuilder = new Headers.Builder()
-                    .add("charset", "utf-8")
-                    .add("user-agent", user_agent)
-                    .add("referer", url_homepage);
+                    .add("Accept", "*/*")
+                    .add("Connection", "Keep-Alive")
+                    .add("Content-Type", "application/json")
+                    .add("User-Agent", " 'APP/com.xiaomi.mico APPV/2.0.10 iosPassportSDK/3.4.1 iOS/12.3'");
             requestHeaders = headersBuilder.build();
 
-            FormBody.Builder formBodyBuilder = new FormBody.Builder()
-                    .add("idnum", busNo);
-            RequestBody requestBody = formBodyBuilder.build();
-
-            request = new Request.Builder()
-                    .url(query_sid_url)
-                    .headers(requestHeaders)
-                    .post(requestBody)
-                    .build();
-
-            try {
-                Response response_get_id = client_home_page.newCall(request).execute();
-                String result_get_id = response_get_id.body().string();//4.获得返回结果
-                result_get_id = unicodeToUtf8(result_get_id);
-                //String result = "Test";
-                if(Config.debug) Log.i(TAG,"-----send Reponse Body Bus Sid" + result_get_id);
-
-                try {
-                    JSONObject jsonObj = new JSONObject(result_get_id);
-                    bus_sid = jsonObj.getString("sid");
-                    if(Config.debug) Log.e(TAG, "Bus SID: " + bus_sid);
-                } catch (final JSONException e) {
-                    final String errmsg = "Test";
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(getApplicationContext(),
-                                    "Error Message When Get SID: " + errmsg,
-                                    Toast.LENGTH_LONG).show();
-                        }
-                    });
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            //bus_sid = get_bus_sid(client_home_page, user_agent, busNo);
-
-            //Step 3: Get Stops for router
-            if(Config.debug) Log.i("-----Bus Step 3", "Get Stops for router");
-
-            String url_router_stops = query_router_details_url + bus_sid + "?stoptype=" + bus_direction;
-            if(Config.debug) Log.i("-----send Reponse URL", url_router_stops);
-
-            headersBuilder = new Headers.Builder()
-                    .add("charset", "utf-8")
-                    .add("user-agent", user_agent)
-                    .add("referer", query_sid_url);
-            requestHeaders = headersBuilder.build();
-
-            Request request_get_stops = new Request.Builder()
-                    .url(url_router_stops)
+            Request request_get_login_sign = new Request.Builder()
+                    .url(url_service_login)
                     .headers(requestHeaders)
                     .get()
                     .build();
-
-            for (String header : request_get_stops.headers("Cookie")) {
-                if(Config.debug) Log.e(TAG, "Request Head - Get Stops: " + header);
-            }
-
             try {
-                if(Config.debug) Log.i("-----send Reponse Body Bus Stops", "Begin");
-                Response response_get_stops = client_home_page.newCall(request_get_stops).execute();
-                for (String header : response_get_stops.headers("Set-Cookie")) {
-                    if(Config.debug) Log.e(TAG, "Response Head - Get Stops: " + header);
-                }
+                Response response_get_login_sing = client_home_page.newCall(request_get_login_sign).execute();
 
-                if(Config.debug) Log.i("-----send Reponse Body Bus Stops", "Execute " + response_get_stops.code());
-
-                assert response_get_stops.body() != null;
-                String result_stops = response_get_stops.body().string();
-                if(Config.debug) Log.i("-----send Reponse Body Bus Stops", "Executed");
-                //if(Config.debug) Log.i("-----send Reponse Body Bus Stops", result_stops);
-                result_stops = unicodeToUtf8(result_stops);
-                //if(Config.debug) Log.i("-----send Reponse Body Bus Stops", result_stops);
-                Document document = Jsoup.parse( result_stops);
-                List<Element> stations= document.select("div.station");
-                for (Element station : stations) {
-                    String stop_id = station
-                            .select("span[class=num]")
-                            .text();
-                    String stop_name = station
-                            .select("span[class=name]")
-                            .text();
-                    //if(Config.debug) Log.i("-----send Reponse Body Bus Stops", stop_id + " :" + stop_name);
-                    Map<String, Object> bus_station_item = new HashMap<>();
-                    bus_station_item.put("item", stop_id);
-                    bus_station_item.put("station", stop_name);
-                    String stop_time = "N/A";
-                    if(Config.debug) Log.e(TAG, "Stop ID: " + stop_id);
-                    if(Config.debug) Log.e(TAG, "Stop ID Asign: " + bus_stop_id);
-                    if(check_all){
-                        stop_time = get_bus_stop_info(client_home_page, query_stop_url, user_agent, url_router_stops, bus_direction, stop_id, bus_sid);
-                    }else {
-                        if (bus_stop_id != null && Integer.parseInt(stop_id.replace(".", "")) == Integer.parseInt(bus_stop_id)) {
-                            stop_time = get_bus_stop_info(client_home_page, query_stop_url, user_agent, url_router_stops, bus_direction, stop_id, bus_sid);
-                        }
-                    }
-                    bus_station_item.put("time", stop_time);
-                    list.add(bus_station_item);
-                }
-            } catch (IOException e) {
-                if(Config.debug) Log.e(TAG, "Error fff: " + e.getMessage());
-            }
-
-            // 执行完毕后给handler发送一个空消息
-            handler.sendEmptyMessage(0);
-        }
-
-        //Step 2: Get Bus Route SID
-        private String get_bus_sid(OkHttpClient client_home_page,  String user_agent, String busNo){
-            String url_homepage = "https://shanghaicity.openservice.kankanews.com/";
-            String query_sid_url = "https://shanghaicity.openservice.kankanews.com/public/bus/get";
-            String bus_sid = "62edeaac8b61a263106c09b3fdf9d6de";
-
-            //Step 2: Get SID for router
-            if(Config.debug) Log.i("-----Bus Step 2", "Get SID for router");
-            Headers.Builder headersBuilder = new Headers.Builder()
-                    .add("charset", "utf-8")
-                    .add("user-agent", user_agent)
-                    .add("referer", url_homepage);
-            Headers requestHeaders = headersBuilder.build();
-
-            FormBody.Builder formBodyBuilder = new FormBody.Builder()
-                    .add("idnum", busNo);
-            RequestBody requestBody = formBodyBuilder.build();
-
-            Request request = new Request.Builder()
-                    .url(query_sid_url)
-                    .headers(requestHeaders)
-                    .post(requestBody)
-                    .build();
-
-            try {
-                Response response_get_id = client_home_page.newCall(request).execute();
-                String result_get_id = response_get_id.body().string();//4.获得返回结果
-                result_get_id = unicodeToUtf8(result_get_id);
-                //String result = "Test";
-                if(Config.debug) Log.i(TAG,"-----send Reponse Body Bus Sid" + result_get_id);
+                String result_get_sign = response_get_login_sing.body().string();//4.获得返回结果
+                result_get_sign = unicodeToUtf8(result_get_sign);
+                result_get_sign = result_get_sign.replace("&&&START&&&","");
+                result_get_sign = result_get_sign.replace("{\"checkSafePhone\":false}","");
+                if(Config.debug) Log.i(TAG,"-----TTS 1 send Reponse Body get Sign" + result_get_sign);
 
                 try {
-                    JSONObject jsonObj = new JSONObject(result_get_id);
-                    bus_sid = jsonObj.getString("sid");
-                    if(Config.debug) Log.e(TAG, "Bus SID: " + bus_sid);
+                    JSONObject jsonObj = new JSONObject(result_get_sign);
+                    String _sign = jsonObj.getString("_sign");
+                    String qs = jsonObj.getString("qs");
+                    if(Config.debug) Log.e(TAG, "_sign: " + _sign);
+                    if(Config.debug) Log.e(TAG, "qs: " + qs);
+                    hashMap.put("_sign",_sign);
+                    hashMap.put("qs",qs);
+
                 } catch (final JSONException e) {
                     final String errmsg = "Test";
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
                             Toast.makeText(getApplicationContext(),
-                                    "Error Message When Get SID: " + errmsg,
+                                    "Error Message When Get sign: " + errmsg,
                                     Toast.LENGTH_LONG).show();
                         }
                     });
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                if(Config.debug) Log.e(TAG, "Error when get Login Sign: " + e.getMessage());
             }
-            return bus_sid;
+            return hashMap;
         }
 
-        //Step 4: Get Stop time for stop_id
-        private String get_bus_stop_info(OkHttpClient client_home_page, String query_stop_url, String user_agent, String url_router_stops, String bus_direction, String bus_stop_id, String bus_sid){
-            String strResult = "等待发车";
+        //Step 2: Get Service Auth
+        private HashMap<String, String> serviceAuth(HashMap<String, String> signData, String user, String pwd){
+            String hashed_pwd = md5(pwd).toUpperCase();
+            if(Config.debug) Log.i("-----TTS 2 Hashed Password", hashed_pwd);
+            HashMap<String, String> hashMap =  new HashMap<>();
+            String SERVICE_AUTH = "https://account.xiaomi.com/pass/serviceLoginAuth2";
 
-            if(Config.debug) Log.i("-----Bus Step 4", "Get Stop time for stop_id " + query_stop_url);
-            Headers.Builder headersBuilder = new Headers.Builder()
-                    .add("charset", "utf-8")
-                    .add("Connection", "keep-alive")
-                    .add("Accept-Encoding", "gzip, deflate, br")
-                    .add("content-type", "application/x-www-form-urlencoded")
-                    .add("user-agent", user_agent)
-                    .add("referer", url_router_stops)
-                    .add("host", "shanghaicity.openservice.kankanews.com")
-                    .add("Origin", "https://shanghaicity.openservice.kankanews.com")
-                    .add("X-Requested-With", "XMLHttpRequest");
-            Headers requestHeaders = headersBuilder.build();
+            if(Config.debug) Log.i("-----TTS 2 Get Service Auth", "Get Service Auth");
+
+            OkHttpClient.Builder mOkHttpClientBuilder = new OkHttpClient.Builder();
+            mOkHttpClientBuilder.cookieJar(new MyCookieJar());
+            OkHttpClient client_home_page = mOkHttpClientBuilder.build();
+
+            String url_service_auth = SERVICE_AUTH;
+            if(Config.debug) Log.i("-----TTS 2 send Reponse URL", url_service_auth);
+
+            Headers.Builder headersBuilder;
+            Headers requestHeaders;
+            headersBuilder = new Headers.Builder()
+                    .add("Accept", "*/*")
+                    .add("Connection", "Keep-Alive")
+                    .add("Content-Type", "application/x-www-form-urlencoded")
+                    .add("User-Agent", " 'APP/com.xiaomi.mico APPV/2.0.10 iosPassportSDK/3.4.1 iOS/12.3'")
+                    .add("Cookie", "deviceId=3C861A5820190429;sdkVersion=3.4.1");
+            requestHeaders = headersBuilder.build();
 
             FormBody.Builder formBodyBuilder = new FormBody.Builder()
-                    .add("stoptype", bus_direction)
-                    .add("stopid", bus_stop_id + ".")
-                    .add("sid", bus_sid);
+                    .add("user", user)
+                    .add("hash", hashed_pwd)
+                    .add("callback",  "https://api.mina.mi.com/sts")
+                    .add("sid", "micoapi")
+                    .add("_json", "true")
+                    .add("_sign", signData.get("_sign"))
+                    .add("qs", signData.get("qs"));
             RequestBody requestBody = formBodyBuilder.build();
 
-            Request request_stop_time = new Request.Builder()
-                    .url(query_stop_url)
+            Request request_get_login_sign = new Request.Builder()
+                    .url(url_service_auth)
                     .headers(requestHeaders)
                     .post(requestBody)
                     .build();
-            for (String header : request_stop_time.headers("Cookie")) {
-                if(Config.debug) Log.e(TAG, "Request Head - Get Stop Time: " + header);
-            }
             try {
-                Response response_get_stop_time = client_home_page.newCall(request_stop_time).execute();
+                Response response_get_service_auth = client_home_page.newCall(request_get_login_sign).execute();
+                //for (String header : response_get_service_auth.headers("Set-Cookie")) {
+                //    if(Config.debug) Log.e(TAG, "Response Head - Get Stops: " + header);
+                //}
 
-                for (String header : response_get_stop_time.headers("Set-Cookie")) {
-                    if(Config.debug) Log.e(TAG, "Response Head - Get Stop Time: " + header);
-                }
-
-                String result = null;//4.获得返回结果
-                if (response_get_stop_time.body() != null) {
-                    result = response_get_stop_time.body().string();
-                }
-
-                if(Config.debug) Log.i("-----send Reponse Body Query Stop", result);
+                String result_get_service_auth = response_get_service_auth.body().string();//4.获得返回结果
+                result_get_service_auth = unicodeToUtf8(result_get_service_auth);
+                result_get_service_auth = result_get_service_auth.replace("&&&START&&&","");
+                if(Config.debug) Log.i(TAG,"-----TTS 2 send Reponse Body Service Auth" + result_get_service_auth);
 
                 try {
-                    JSONObject bus_stop_info = new JSONObject(result);
-                    String message = bus_stop_info.getString("error");
-                    strResult = "等待发车";
-                } catch (final JSONException e) {
-                    try{
-                        //addNotification("Get Stop Time Fail, please check!");
-                        JSONArray jsonarray = new JSONArray(result);
-                        for(int i=0; i < jsonarray.length(); i++) {
-                            JSONObject jsonObj = jsonarray.getJSONObject(i);
-                            final String terminal = jsonObj.getString("terminal");
-                            final String distance = jsonObj.getString("distance");
-                            final String time = jsonObj.getString("time") + "秒";
-                            final String stopdis = jsonObj.getString("stopdis");
-                            strResult = terminal + " 还有" + stopdis + "站" + distance + "米，约" + time;
-                        }
-
-                    }catch ( final JSONException ex) {
-                        if(Config.debug) Log.e(TAG, "Json parsing error 1: " + ex.getMessage());
-                        return ex.getMessage();
+                    JSONObject jsonObj = new JSONObject(result_get_service_auth);
+                    String login_status_desc = jsonObj.getString("desc");
+                    if(!login_status_desc.equals("成功")){
+                        if(Config.debug) Log.i(TAG,"-----TTS 2 Login status:" + login_status_desc);
+                        hashMap.put("nonce","failure");
+                        hashMap.put("ssecurity","failure");
+                        hashMap.put("location","failure");
+                        hashMap.put("userId","failure");
+                        hashMap.put("desc",login_status_desc);
+                        return hashMap;
                     }
+                    String nonce = jsonObj.getString("nonce");
+                    String ssecurity = jsonObj.getString("ssecurity");
+                    String location = jsonObj.getString("location");
+                    String userId =  jsonObj.getString("userId");
+
+                    if(Config.debug) Log.e(TAG, "nonce: " + nonce);
+                    if(Config.debug) Log.e(TAG, "ssecurity: " + ssecurity);
+                    if(Config.debug) Log.e(TAG, "location: " + location);
+                    if(Config.debug) Log.e(TAG, "userId: " + userId);
+                    hashMap.put("nonce",nonce);
+                    hashMap.put("ssecurity",ssecurity);
+                    hashMap.put("location",location);
+                    hashMap.put("userId",userId);
+                    hashMap.put("desc",login_status_desc);
+                } catch (final JSONException e) {
+                    final String errmsg = "Test";
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(getApplicationContext(),
+                                    "Error Message When Get Service Auth: " + errmsg,
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
                 }
-                //return resultList;
             } catch (IOException e) {
-                e.printStackTrace();
+                if(Config.debug) Log.e(TAG, "Error When get service Auth: " + e.getMessage());
             }
-            return strResult;
+            return hashMap;
         }
-    };
+
+        //Step 3: Login Mi Ai
+        private String loginMiAi(HashMap<String, String> authInfo){
+            String LOGIN_MI_AI_URL = authInfo.get("location");
+            String nonce = authInfo.get("nonce");
+            String security = authInfo.get("ssecurity");
+            String clientSign = "nonce=" + nonce + "&" + security;
+            byte[] hashed_sign = encryptToSHA(clientSign);
+            //String testhash = "nonce=6925521015213910016&e0zDPDQzRja/LkfXuDOzjg==";
+            //if(Config.debug) Log.i("-----TTS 3 encrypt To SHA1", Base64.encodeToString(encryptToSHA(testhash), Base64.DEFAULT));
+
+            String encodedClientSign = Base64.encodeToString(hashed_sign, Base64.DEFAULT);
+            if(Config.debug) Log.i("-----TTS 3 encodedClientSign", encodedClientSign);
+            if(Config.debug) Log.i("-----TTS 3 Get Login cookie", "Get Login Cookie");
+
+            OkHttpClient.Builder mOkHttpClientBuilder = new OkHttpClient.Builder();
+            mOkHttpClientBuilder.cookieJar(new MyCookieJar());
+            OkHttpClient client_home_page = mOkHttpClientBuilder.build();
+
+            String url_login_miai = LOGIN_MI_AI_URL + "&clientSign=" + encodedClientSign;
+            if(Config.debug) Log.i("-----TTS 3 send Reponse URL", url_login_miai);
+
+            Headers.Builder headersBuilder;
+            Headers requestHeaders;
+            headersBuilder = new Headers.Builder()
+                    .add("Accept", "*/*")
+                    .add("Connection", "Keep-Alive")
+                    .add("Content-Type", "application/json")
+                    .add("User-Agent", " 'APP/com.xiaomi.mico APPV/2.0.10 iosPassportSDK/3.4.1 iOS/12.3'");
+            requestHeaders = headersBuilder.build();
+
+            Request request_get_login_mi_ai = new Request.Builder()
+                    .url(url_login_miai)
+                    .headers(requestHeaders)
+                    .get()
+                    .build();
+            try {
+                Response response_get_login_sing = client_home_page.newCall(request_get_login_mi_ai).execute();
+
+                try {
+                    if(response_get_login_sing.code()== 401){
+                        return "401";
+                    }else{
+                        for (String header : response_get_login_sing.headers("Set-Cookie")) {
+                            //if(Config.debug) Log.e(TAG, "Response Head - Get Headers Cookie: " + header);
+                            String regex = "serviceToken=(.*?);";
+                            Pattern pattern = Pattern.compile(regex);
+                            Matcher matcher = pattern.matcher(header);
+                            while(matcher.find()) {
+                                String group = matcher.group();
+                                if(Config.debug) Log.e(TAG, "Response Head - Get Headers Cookie: " + group);
+                                return group;
+                                //break;
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    final String errmsg = "Test";
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(getApplicationContext(),
+                                    "Error Message When Get sign: " + errmsg,
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
+                }
+            } catch (IOException e) {
+                if(Config.debug) Log.e(TAG, "Error when get service Token cookie: " + e.getMessage());
+            }
+            return "401";
+        }
+
+        //Step 4: GetMiAiCookie
+        private String getAiCookie(String userId, String serviceToken){
+            return "userId=" + userId + ";" + serviceToken;
+        }
+
 
     public String unicodeToUtf8(String theString) {
         char aChar;
@@ -484,167 +661,73 @@ public class XiaoaiLogin extends AppCompatActivity {
         return outBuffer.toString();
     }
 
-    @SuppressLint("HandlerLeak")
-    Handler handler = new Handler() {
+        //onProgressUpdate方法用于更新进度信息
         @Override
-        public void handleMessage(Message msg) {
-            super.handleMessage(msg);
-            // 收到消息后执行handler
-            show();
+        protected void onProgressUpdate(Integer... progresses) {
+
         }
-    };
 
-
-    // 判断是否有可用的网络连接
-    public boolean isNetworkAvailable(Activity activity)
-    {
-        Context context = activity.getApplicationContext();
-        ConnectivityManager cm = (ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        if (cm == null)
-            return false;
-        else
-        {   // 获取所有NetworkInfo对象
-            @SuppressLint("MissingPermission") NetworkInfo[] networkInfo = cm.getAllNetworkInfo();
-            if (networkInfo != null && networkInfo.length > 0)
-            {
-                for (NetworkInfo networkInfo1 : networkInfo)
-                    if (networkInfo1.getState() == NetworkInfo.State.CONNECTED)
-                        return true;  // 存在可用的网络连接
+        //onPostExecute方法用于在执行完后台任务后更新UI,显示结果
+        @Override
+        protected void onPostExecute(Boolean result) {
+            super.onPostExecute(result);
+            if(!result){
+                toXiaoaiDevices();
+            }else{
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getApplicationContext(),
+                                "Login faliure, please check username and password!: ",
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
             }
         }
-        return false;
-    }
 
-    // 刷新
-    public void refresh() {
-        if(isNetworkAvailable(XiaoaiLogin.this)) {
-            // 显示“正在刷新”窗口
-            dialog = new ProgressDialog(this);
-            dialog.setMessage("正在刷新...");
-            dialog.setCancelable(false);
-            dialog.show();
-            // 重新抓取
-            list.clear();
-            new Thread(runnable).start();  // 子线程
-        } else {
-            // 弹出提示框
-            new AlertDialog.Builder(this)
-                    .setTitle("刷新")
-                    .setMessage("当前没有网络连接！")
-                    .setPositiveButton("重试",new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            refresh();
-                        }
-                    }).setNegativeButton("退出",new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    System.exit(0);  // 退出程序
-                }
-            }).show();
+        public void toXiaoaiDevices(){
+            /* 新建一个Intent对象 */
+            Intent intent = new Intent();
+            intent.putExtra("name","XiaoAi");
+            /* 指定intent要启动的类 */
+            intent.setClass(XiaoaiLogin.this, XiaoaiDevices.class);
+            /* 启动一个新的Activity */
+            XiaoaiLogin.this.startActivity(intent);
+            /* 关闭当前的Activity */
+            XiaoaiLogin.this.finish();
+        }
+
+        //onCancelled方法用于在取消执行中的任务时更改UI
+        @Override
+        protected void onCancelled() {
+
         }
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
+    public boolean onLongClick(View view) {
+        switch (view.getId()){
+            case R.id.register:
+                if(SERVER_FLAG > 9){
+                    break;
+                }
+        }
         return true;
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        switch (id) {
-            case R.id.action_refresh:
-                //Toast.makeText(MainActivity.this, "刷新按钮 TBD", Toast.LENGTH_SHORT).show();
-                refresh();
-                break;
-            case R.id.action_toggle_direction:
-                Toast.makeText(XiaoaiLogin.this, "换向按钮 TBD", Toast.LENGTH_SHORT).show();
-                //refresh();
-                break;
-            case R.id.action_settings:
-                //popUpMyOverflow();
-                getShanghaiBusSettingsFragment(this.getCurrentFocus());
-                break;
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public void onBackPressed() {
-        AlertDialog.Builder dialog = new AlertDialog.Builder(this);
-        dialog.setTitle("退出提示");
-        dialog.setMessage("您确定退出应用吗?");
-        dialog.setNegativeButton("取消",null);
-        dialog.setPositiveButton("确定", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                finish();
-                System.exit(0);
-            }
-        });
-        dialog.show();
-    }
-
-    public void onSectionAttached(int number) {
-        switch (number) {
-            case 1:
-                mTitle = "69";
-                break;
-            case 2:
-                mTitle = "700";
-                break;
-            case 3:
-                mTitle = "1031";
-                break;
-        }
-    }
-
-    public void getShanghaiBusSettingsFragment(View view) {
-        Intent launchIntent = new Intent(this, ShanghaiBusPreferencesActivity.class);
-        if (launchIntent != null) {
-            startActivity(launchIntent);//null pointer check in case package name was not found
-        }
-    }
-
     /**
-     * A placeholder fragment containing a simple view.
+     * 监听back的那块
+     * @param keyCode
+     * @param event
+     * @return
      */
-    public static class PlaceholderFragment extends Fragment {
-        /**
-         * The fragment argument representing the section number for this
-         * fragment.
-         */
-        private static final String ARG_SECTION_NUMBER = "section_number";
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if(keyCode==KeyEvent.KEYCODE_BACK){
+            if (isReLogin){
 
-        /**
-         * Returns a new instance of this fragment for the given section
-         * number.
-         */
-        public static PlaceholderFragment newInstance(int sectionNumber) {
-            PlaceholderFragment fragment = new PlaceholderFragment();
-            Bundle args = new Bundle();
-            args.putInt(ARG_SECTION_NUMBER, sectionNumber);
-            fragment.setArguments(args);
-            return fragment;
+            }
         }
-
-        public PlaceholderFragment() {
-        }
-
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.fragment_main, container, false);
-            return rootView;
-        }
-
+        return super.onKeyDown(keyCode, event);
     }
 }

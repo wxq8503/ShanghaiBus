@@ -554,7 +554,19 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent();
         intent.putExtra("name","XiaoAi");
         /* 指定intent要启动的类 */
-        intent.setClass(MainActivity.this, XiaoaiTTS.class);
+        intent.setClass(MainActivity.this, XiaoaiChat.class);
+        /* 启动一个新的Activity */
+        MainActivity.this.startActivity(intent);
+        /* 关闭当前的Activity */
+        MainActivity.this.finish();
+    }
+
+    public void toXiaoaiDevices(){
+        /* 新建一个Intent对象 */
+        Intent intent = new Intent();
+        intent.putExtra("name","XiaoAi");
+        /* 指定intent要启动的类 */
+        intent.setClass(MainActivity.this, XiaoaiDevices.class);
         /* 启动一个新的Activity */
         MainActivity.this.startActivity(intent);
         /* 关闭当前的Activity */
@@ -611,9 +623,10 @@ public class MainActivity extends AppCompatActivity {
                 refresh();
                 break;
             case R.id.action_toggle_direction:
-                Toast.makeText(MainActivity.this, "换向按钮 TBD", Toast.LENGTH_SHORT).show();
+                //Toast.makeText(MainActivity.this, "换向按钮 TBD", Toast.LENGTH_SHORT).show();
                 //refresh();
-                toXiaoaiTTS();
+                //toXiaoaiTTS();
+                toXiaoaiDevices();
                 break;
             case R.id.action_settings:
                 //popUpMyOverflow();

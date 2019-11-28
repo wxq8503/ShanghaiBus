@@ -14,11 +14,14 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name=".XiaoaiLogin"
-            android:label="XiaoaiLogin"></activity>
+            android:name=".XiaoaiDevices"
+            android:label="XiaoaiDevices" />
         <activity
-            android:name=".XiaoaiTTS"
-            android:label="XiaoaiTTS"></activity>
+            android:name=".XiaoaiChat"
+            android:label="XiaoaiChat" />
+        <activity
+            android:name=".XiaoaiLogin"
+            android:label="XiaoaiLogin" />
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name"

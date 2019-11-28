@@ -11,7 +11,7 @@ import android.content.SharedPreferences;
  * @author LeonLee
  */
 public class Config {
-    static final boolean debug = true;
+    public static final boolean debug = true;
     private static final String PREFERENCE_NAME = "config";
 
     static final String KEY_USER_AGENT_LIST = "KEY_USER_AGENT_LIST";
@@ -28,6 +28,7 @@ public class Config {
     static final String KEY_BUS_DIRECTIONS_LIST = "KEY_BUS_DIRECTIONS_LIST";
 
     private static final String KEY_AGREEMENT = "KEY_AGREEMENT";
+
 
     private static Config current;
 
