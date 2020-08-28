@@ -16,7 +16,6 @@ import android.os.Message;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -32,8 +31,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -72,7 +69,8 @@ public class XiaoaiDevices extends AppCompatActivity {
         if(Config.debug) Log.e(TAG, "cookie: " + xiaoai_cookie);
         if(Config.debug) Log.e(TAG, "Device ID: " + deviceID);
 
-        if(deviceID.equals("Null")){
+        xiaoai_cookie = "Null";
+        if(xiaoai_cookie.equals("Null")){
             toXiaomiLogin();
         }
 
@@ -88,14 +86,14 @@ public class XiaoaiDevices extends AppCompatActivity {
 
     protected void onStart() {
         super.onStart();
+        SharedPreferences settings = getSharedPreferences("XiaoAiUserInfo", 0);
+        xiaoai_cookie = settings.getString("cookie", "Null").toString();
     }
 
     // 将数据填充到ListView中
     private void show() {
         if(Config.debug) Log.e(TAG, "Show Device List: ");
         if(device_list.isEmpty()) {
-            //TextView message = findViewById(R.id.message);
-            //message.setText("目前没有信息");
             if(Config.debug) Log.e(TAG, "No Device Found:");
         } else {
             //if(Config.debug) Log.e(TAG, "Device List: " + device_list);
@@ -134,86 +132,16 @@ public class XiaoaiDevices extends AppCompatActivity {
     Runnable runnable = new Runnable() {
         @Override
         public void run() {
-            //Looper.prepare();
             try {
-
-                //String login = Login();
-                String msg = "锄禾日当午，汗滴禾下土，谁知盘中餐，粒粒皆辛苦！";
                 String devices = getLiveDevices(xiaoai_cookie);
                 if(devices.equals("failure")){
                     toXiaomiLogin();
                 }
-                //say(msg,deviceID);
             } catch (Exception e) {
-                if(Config.debug) Log.e(TAG, "Error fff: " + e.getMessage());
+                if(Config.debug) Log.e(TAG, "Error when get Live Devices: " + e.getMessage());
             }
-
             // 执行完毕后给handler发送一个空消息
             handler.sendEmptyMessage(0);
-        }
-
-        private String md5(String string) {
-            if (TextUtils.isEmpty(string)) {
-                return "";
-            }
-            MessageDigest md5 = null;
-            try {
-                md5 = MessageDigest.getInstance("MD5");
-                byte[] bytes = md5.digest(string.getBytes());
-                String result = "";
-                for (byte b : bytes) {
-                    String temp = Integer.toHexString(b & 0xff);
-                    if (temp.length() == 1) {
-                        temp = "0" + temp;
-                    }
-                    result += temp;
-                }
-                return result;
-            } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
-            }
-            return "";
-        }
-
-        private byte[] encryptToSHA(String info) {
-            byte[] digesta = null;
-            try {
-                MessageDigest alga = MessageDigest.getInstance("SHA-1");
-                alga.update(info.getBytes());
-                digesta = alga.digest();
-            } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
-            }
-            return digesta;
-        }
-
-        private String getSHA(String val) throws NoSuchAlgorithmException{
-            MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
-            sha1.update(val.getBytes());
-            byte[] m = sha1.digest();//加密
-            return getString(m);
-        }
-
-        private String getString(byte[] b){
-            StringBuffer sb = new StringBuffer();
-            for(int i = 0; i < b.length; i ++){
-                sb.append(b[i]);
-            }
-            return sb.toString();
-        }
-
-        private String byte2hex(byte[] b) {
-            String hs = "";
-            String stmp = "";
-            for (int n = 0; n < b.length; n++) {
-                stmp = (java.lang.Integer.toHexString(b[n] & 0XFF));
-                if (stmp.length() == 1) {
-                    hs = hs + "0" + stmp;
-                } else {
-                    hs = hs + stmp;
-                }
-            }
-            return hs;
         }
 
         private static final String ALLOWED_CHARACTERS ="0123456789qwertyuiopasdfghjklzxcvbnmZXCVBNMASDFGHJKLPOIUYTREWQ_";
@@ -285,8 +213,9 @@ public class XiaoaiDevices extends AppCompatActivity {
                             device_item.put("status", presence);
                             device_item.put("device_id", deviceID);
                             device_list.add(device_item);
-                            return deviceID;
+                            //return deviceID;
                         }
+                        return "Success";
                     }else{
                         Map<String, Object> device_item = new HashMap<>();
                         // adding each child node to HashMap key => value
@@ -302,10 +231,12 @@ public class XiaoaiDevices extends AppCompatActivity {
                     device_item.put("status", "N/A");
                     device_item.put("device_id", "N/A");
                     device_list.add(device_item);
-                    final String errmsg = "Test";
+
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            String errmsg = "Test";
+                            errmsg = e.getMessage();
                             Toast.makeText(getApplicationContext(),
                                     "Error Message When Get Devices List: " + errmsg,
                                     Toast.LENGTH_LONG).show();
@@ -490,12 +421,10 @@ public class XiaoaiDevices extends AppCompatActivity {
                 refresh();
                 break;
             case R.id.action_toggle_direction:
-                Toast.makeText(XiaoaiDevices.this, "换向按钮 TBD", Toast.LENGTH_SHORT).show();
-                //refresh();
+                //Toast.makeText(XiaoaiDevices.this, "换向按钮 TBD", Toast.LENGTH_SHORT).show();
                 toMainActivity();
                 break;
             case R.id.action_settings:
-                //popUpMyOverflow();
                 getShanghaiBusSettingsFragment(this.getCurrentFocus());
                 break;
         }

@@ -22,7 +22,7 @@
                 android:hint="@string/prompt_email"
                 android:layout_width="fill_parent"
                 android:layout_height="40dp"
-                android:id="@+id/usename"
+                android:id="@+id/username"
                 android:layout_marginTop="5dp"
                 android:inputType="number"
                 android:paddingRight="60dp"

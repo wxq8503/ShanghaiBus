@@ -27,10 +27,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -235,7 +232,25 @@ public class XiaoaiLogin extends AppCompatActivity implements View.OnClickListen
             return Login_result;
         }
 
-        public Boolean Login_TSK(String username, String password){
+        //onPostExecute方法用于在执行完后台任务后更新UI,显示结果
+        @Override
+        protected void onPostExecute(Boolean result) {
+            super.onPostExecute(result);
+            if(result){
+                toXiaoaiDevices();
+            }else{
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getApplicationContext(),
+                                "Login faliure, please check username and password!: ",
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+        }
+
+        private Boolean Login_TSK(String username, String password){
             try {
                 HashMap<String, String> sign = getLoginSign();
                 if(sign == null) {
@@ -254,43 +269,43 @@ public class XiaoaiLogin extends AppCompatActivity implements View.OnClickListen
                 if(sign.equals("failure")){
                     return false;
                 }
-                HashMap<String, String> authInfo = serviceAuth(sign, username, password);
+
+                HashMap<String, String> authInfo = getServiceAuth(sign, username, password);
                 if(authInfo == null) {
-                    if (Config.debug) Log.i("-----Login Error - serviceAuth", "");
+                    if (Config.debug) Log.i(TAG,"-----Login Error - getServiceAuth");
                     return false;
                 }
                 if(authInfo.isEmpty()) {
-                    if (Config.debug) Log.i("-----Login Error - serviceAuth", "");
+                    if (Config.debug) Log.i(TAG,"-----Login Error - getServiceAuth");
                     return false;
                 }
                 if(authInfo == null || authInfo.isEmpty()) {
-                    if (Config.debug) Log.i("-----Login Error - serviceAuth", "");
+                    if (Config.debug) Log.i(TAG,"-----Login Error - getServiceAuth");
                     return false;
                 }
 
                 if (authInfo.get("userId") .equals("failure")) {
-                    if (Config.debug) Log.i("-----Login Error", authInfo.get("desc"));
+                    if (Config.debug) Log.i(TAG,"-----Login Error - getServiceAuth: " + authInfo.get("desc"));
                     return false;
                 }
                 String serviceToken = loginMiAi(authInfo);
-                if (serviceToken == "401") {
-                    if (Config.debug) Log.i("-----Login Error", serviceToken);
+                if (serviceToken == "failure") {
+                    if (Config.debug) Log.i(TAG,"-----Login Error - loginMiAi: " + serviceToken);
                     return false;
                 }
                 xiaoai_cookie = getAiCookie(authInfo.get("userId"), serviceToken);
-                if (Config.debug) Log.i("-----Cookie", xiaoai_cookie);
-
+                if (Config.debug) Log.i(TAG,"-----Login Cookie: " + xiaoai_cookie);
                 SharedPreferences settings = getSharedPreferences("XiaoAiUserInfo", 0);
                 SharedPreferences.Editor editor = settings.edit();
                 editor.putString("username", username);
                 editor.putString("password", password);
                 editor.putString("cookie", xiaoai_cookie);
-                //editor.putString("livedeviceId", devices);
                 editor.commit();
             }catch (Exception e){
-                if (Config.debug) Log.i("-----Login failured", "");
+                if (Config.debug) Log.i(TAG,"-----Login failured");
                 return false;
             }
+            if (Config.debug) Log.i(TAG,"-----Login Succeeded!");
             return true;
         }
 
@@ -365,14 +380,14 @@ public class XiaoaiLogin extends AppCompatActivity implements View.OnClickListen
             HashMap<String, String> hashMap =  new HashMap<>();
             String SERVICE_LOGIN_URL = "https://account.xiaomi.com/pass/serviceLogin?sid=micoapi&_json=true";
 
-            if(Config.debug) Log.i("-----TTS 1 Get Login Sign", "Get Login Sign");
+            if(Config.debug) Log.i("-----getLoginSign Get Login Sign", "Get Login Sign");
 
             OkHttpClient.Builder mOkHttpClientBuilder = new OkHttpClient.Builder();
             mOkHttpClientBuilder.cookieJar(new MyCookieJar());
             OkHttpClient client_home_page = mOkHttpClientBuilder.build();
 
             String url_service_login = SERVICE_LOGIN_URL;
-            if(Config.debug) Log.i("-----TTS 1 send Reponse URL", url_service_login);
+            if(Config.debug) Log.i("-----getLoginSign send Reponse URL", url_service_login);
 
             Headers.Builder headersBuilder;
             Headers requestHeaders;
@@ -395,7 +410,7 @@ public class XiaoaiLogin extends AppCompatActivity implements View.OnClickListen
                 result_get_sign = unicodeToUtf8(result_get_sign);
                 result_get_sign = result_get_sign.replace("&&&START&&&","");
                 result_get_sign = result_get_sign.replace("{\"checkSafePhone\":false}","");
-                if(Config.debug) Log.i(TAG,"-----TTS 1 send Reponse Body get Sign" + result_get_sign);
+                if(Config.debug) Log.i(TAG,"-----getLoginSign send Reponse Body get Sign" + result_get_sign);
 
                 try {
                     JSONObject jsonObj = new JSONObject(result_get_sign);
@@ -405,7 +420,6 @@ public class XiaoaiLogin extends AppCompatActivity implements View.OnClickListen
                     if(Config.debug) Log.e(TAG, "qs: " + qs);
                     hashMap.put("_sign",_sign);
                     hashMap.put("qs",qs);
-
                 } catch (final JSONException e) {
                     final String errmsg = "Test";
                     runOnUiThread(new Runnable() {
@@ -424,21 +438,22 @@ public class XiaoaiLogin extends AppCompatActivity implements View.OnClickListen
         }
 
         //Step 2: Get Service Auth
-        private HashMap<String, String> serviceAuth(HashMap<String, String> signData, String user, String pwd){
+        private HashMap<String, String> getServiceAuth(HashMap<String, String> signData, String user, String pwd){
             String hashed_pwd = md5(pwd).toUpperCase();
-            if(Config.debug) Log.i("-----TTS 2 Hashed Password", hashed_pwd);
+            if(Config.debug) Log.e(TAG, "-----getServiceAuth Hashed Password： " + hashed_pwd);
+            //if(Config.debug) Log.i("-----getServiceAuth Hashed Password", hashed_pwd);
             HashMap<String, String> hashMap =  new HashMap<>();
             String SERVICE_AUTH = "https://account.xiaomi.com/pass/serviceLoginAuth2";
 
-            if(Config.debug) Log.i("-----TTS 2 Get Service Auth", "Get Service Auth");
-
+            //if(Config.debug) Log.i("-----getServiceAuth Get Service Auth", "Get Service Auth");
+            if(Config.debug) Log.e(TAG, "-----getServiceAuth Get Service Auth： ");
             OkHttpClient.Builder mOkHttpClientBuilder = new OkHttpClient.Builder();
             mOkHttpClientBuilder.cookieJar(new MyCookieJar());
             OkHttpClient client_home_page = mOkHttpClientBuilder.build();
 
             String url_service_auth = SERVICE_AUTH;
-            if(Config.debug) Log.i("-----TTS 2 send Reponse URL", url_service_auth);
-
+            //if(Config.debug) Log.i("-----getServiceAuth send Reponse URL", url_service_auth);
+            if(Config.debug) Log.e(TAG, "-----getServiceAuth send Reponse URL： " + url_service_auth);
             Headers.Builder headersBuilder;
             Headers requestHeaders;
             headersBuilder = new Headers.Builder()
@@ -466,20 +481,16 @@ public class XiaoaiLogin extends AppCompatActivity implements View.OnClickListen
                     .build();
             try {
                 Response response_get_service_auth = client_home_page.newCall(request_get_login_sign).execute();
-                //for (String header : response_get_service_auth.headers("Set-Cookie")) {
-                //    if(Config.debug) Log.e(TAG, "Response Head - Get Stops: " + header);
-                //}
-
                 String result_get_service_auth = response_get_service_auth.body().string();//4.获得返回结果
                 result_get_service_auth = unicodeToUtf8(result_get_service_auth);
                 result_get_service_auth = result_get_service_auth.replace("&&&START&&&","");
-                if(Config.debug) Log.i(TAG,"-----TTS 2 send Reponse Body Service Auth" + result_get_service_auth);
+                if(Config.debug) Log.i(TAG,"-----getServiceAuth send Reponse Body Service Auth" + result_get_service_auth);
 
                 try {
                     JSONObject jsonObj = new JSONObject(result_get_service_auth);
                     String login_status_desc = jsonObj.getString("desc");
                     if(!login_status_desc.equals("成功")){
-                        if(Config.debug) Log.i(TAG,"-----TTS 2 Login status:" + login_status_desc);
+                        if(Config.debug) Log.i(TAG,"-----getServiceAuth Login status:" + login_status_desc);
                         hashMap.put("nonce","failure");
                         hashMap.put("ssecurity","failure");
                         hashMap.put("location","failure");
@@ -529,15 +540,15 @@ public class XiaoaiLogin extends AppCompatActivity implements View.OnClickListen
             //if(Config.debug) Log.i("-----TTS 3 encrypt To SHA1", Base64.encodeToString(encryptToSHA(testhash), Base64.DEFAULT));
 
             String encodedClientSign = Base64.encodeToString(hashed_sign, Base64.DEFAULT);
-            if(Config.debug) Log.i("-----TTS 3 encodedClientSign", encodedClientSign);
-            if(Config.debug) Log.i("-----TTS 3 Get Login cookie", "Get Login Cookie");
+            if(Config.debug) Log.i("-----loginMiAi encodedClientSign", encodedClientSign);
+            if(Config.debug) Log.i("-----loginMiAi Get Login cookie", "Get Login Cookie");
 
             OkHttpClient.Builder mOkHttpClientBuilder = new OkHttpClient.Builder();
             mOkHttpClientBuilder.cookieJar(new MyCookieJar());
             OkHttpClient client_home_page = mOkHttpClientBuilder.build();
 
             String url_login_miai = LOGIN_MI_AI_URL + "&clientSign=" + encodedClientSign;
-            if(Config.debug) Log.i("-----TTS 3 send Reponse URL", url_login_miai);
+            if(Config.debug) Log.i("-----loginMiAi send Reponse URL", url_login_miai);
 
             Headers.Builder headersBuilder;
             Headers requestHeaders;
@@ -554,13 +565,14 @@ public class XiaoaiLogin extends AppCompatActivity implements View.OnClickListen
                     .get()
                     .build();
             try {
-                Response response_get_login_sing = client_home_page.newCall(request_get_login_mi_ai).execute();
+                Response response_get_login_mi_ai = client_home_page.newCall(request_get_login_mi_ai).execute();
 
                 try {
-                    if(response_get_login_sing.code()== 401){
-                        return "401";
+                    if(response_get_login_mi_ai.code()== 401){
+                        return "failure";
                     }else{
-                        for (String header : response_get_login_sing.headers("Set-Cookie")) {
+                        if(Config.debug) Log.e(TAG, "Response Body - Get Login Body: " + response_get_login_mi_ai.body().string());
+                        for (String header : response_get_login_mi_ai.headers("Set-Cookie")) {
                             //if(Config.debug) Log.e(TAG, "Response Head - Get Headers Cookie: " + header);
                             String regex = "serviceToken=(.*?);";
                             Pattern pattern = Pattern.compile(regex);
@@ -569,7 +581,6 @@ public class XiaoaiLogin extends AppCompatActivity implements View.OnClickListen
                                 String group = matcher.group();
                                 if(Config.debug) Log.e(TAG, "Response Head - Get Headers Cookie: " + group);
                                 return group;
-                                //break;
                             }
                         }
                     }
@@ -579,7 +590,7 @@ public class XiaoaiLogin extends AppCompatActivity implements View.OnClickListen
                         @Override
                         public void run() {
                             Toast.makeText(getApplicationContext(),
-                                    "Error Message When Get sign: " + errmsg,
+                                    "Error Message When Get loginMiAi: " + errmsg,
                                     Toast.LENGTH_LONG).show();
                         }
                     });
@@ -587,7 +598,7 @@ public class XiaoaiLogin extends AppCompatActivity implements View.OnClickListen
             } catch (IOException e) {
                 if(Config.debug) Log.e(TAG, "Error when get service Token cookie: " + e.getMessage());
             }
-            return "401";
+            return "failure";
         }
 
         //Step 4: GetMiAiCookie
@@ -596,96 +607,73 @@ public class XiaoaiLogin extends AppCompatActivity implements View.OnClickListen
         }
 
 
-    public String unicodeToUtf8(String theString) {
-        char aChar;
-        int len = theString.length();
-        StringBuffer outBuffer = new StringBuffer(len);
-        for (int x = 0; x < len;) {
-            aChar = theString.charAt(x++);
-            if (aChar == '\\') {
+        private String unicodeToUtf8(String theString) {
+            char aChar;
+            int len = theString.length();
+            StringBuffer outBuffer = new StringBuffer(len);
+            for (int x = 0; x < len;) {
                 aChar = theString.charAt(x++);
-                if (aChar == 'u') {
-                    // Read the xxxx
-                    int value = 0;
-                    for (int i = 0; i < 4; i++) {
-                        aChar = theString.charAt(x++);
-                        switch (aChar) {
-                            case '0':
-                            case '1':
-                            case '2':
-                            case '3':
-                            case '4':
-                            case '5':
-                            case '6':
-                            case '7':
-                            case '8':
-                            case '9':
-                                value = (value << 4) + aChar - '0';
-                                break;
-                            case 'a':
-                            case 'b':
-                            case 'c':
-                            case 'd':
-                            case 'e':
-                            case 'f':
-                                value = (value << 4) + 10 + aChar - 'a';
-                                break;
-                            case 'A':
-                            case 'B':
-                            case 'C':
-                            case 'D':
-                            case 'E':
-                            case 'F':
-                                value = (value << 4) + 10 + aChar - 'A';
-                                break;
-                            default:
-                                throw new IllegalArgumentException(
-                                        "Malformed   \\uxxxx   encoding.");
+                if (aChar == '\\') {
+                    aChar = theString.charAt(x++);
+                    if (aChar == 'u') {
+                        // Read the xxxx
+                        int value = 0;
+                        for (int i = 0; i < 4; i++) {
+                            aChar = theString.charAt(x++);
+                            switch (aChar) {
+                                case '0':
+                                case '1':
+                                case '2':
+                                case '3':
+                                case '4':
+                                case '5':
+                                case '6':
+                                case '7':
+                                case '8':
+                                case '9':
+                                    value = (value << 4) + aChar - '0';
+                                    break;
+                                case 'a':
+                                case 'b':
+                                case 'c':
+                                case 'd':
+                                case 'e':
+                                case 'f':
+                                    value = (value << 4) + 10 + aChar - 'a';
+                                    break;
+                                case 'A':
+                                case 'B':
+                                case 'C':
+                                case 'D':
+                                case 'E':
+                                case 'F':
+                                    value = (value << 4) + 10 + aChar - 'A';
+                                    break;
+                                default:
+                                    throw new IllegalArgumentException(
+                                            "Malformed   \\uxxxx   encoding.");
+                            }
                         }
+                        outBuffer.append((char) value);
+                    } else {
+                        if (aChar == 't')
+                            aChar = '\t';
+                        else if (aChar == 'r')
+                            aChar = '\r';
+                        else if (aChar == 'n')
+                            aChar = '\n';
+                        else if (aChar == 'f')
+                            aChar = '\f';
+                        outBuffer.append(aChar);
                     }
-                    outBuffer.append((char) value);
-                } else {
-                    if (aChar == 't')
-                        aChar = '\t';
-                    else if (aChar == 'r')
-                        aChar = '\r';
-                    else if (aChar == 'n')
-                        aChar = '\n';
-                    else if (aChar == 'f')
-                        aChar = '\f';
+                } else
                     outBuffer.append(aChar);
-                }
-            } else
-                outBuffer.append(aChar);
-        }
-        return outBuffer.toString();
-    }
-
-        //onProgressUpdate方法用于更新进度信息
-        @Override
-        protected void onProgressUpdate(Integer... progresses) {
-
-        }
-
-        //onPostExecute方法用于在执行完后台任务后更新UI,显示结果
-        @Override
-        protected void onPostExecute(Boolean result) {
-            super.onPostExecute(result);
-            if(!result){
-                toXiaoaiDevices();
-            }else{
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(getApplicationContext(),
-                                "Login faliure, please check username and password!: ",
-                                Toast.LENGTH_LONG).show();
-                    }
-                });
             }
+            return outBuffer.toString();
         }
 
-        public void toXiaoaiDevices(){
+
+        void toXiaoaiDevices(){
             /* 新建一个Intent对象 */
             Intent intent = new Intent();
             intent.putExtra("name","XiaoAi");
@@ -697,11 +685,6 @@ public class XiaoaiLogin extends AppCompatActivity implements View.OnClickListen
             XiaoaiLogin.this.finish();
         }
 
-        //onCancelled方法用于在取消执行中的任务时更改UI
-        @Override
-        protected void onCancelled() {
-
-        }
     }
 
     @Override

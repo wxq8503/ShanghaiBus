@@ -92,11 +92,9 @@ public class MainActivity extends AppCompatActivity {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                //Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG).setAction("Action", null).show();
                 refresh();
             }
         });
-        //refresh();
     }
 
     protected void onStart() {
@@ -108,25 +106,11 @@ public class MainActivity extends AppCompatActivity {
             direction_m = "下行";
         }
 
-        if(Config.debug) Log.i("-----Bus Route", busNo + "路 " + direction_m);
+        //if(Config.debug) Log.i("-----Bus Route", busNo + "路 " + direction_m);
         //设置主标题和颜色
-
-        //toolbar.setLogo(R.drawable.bus);
         toolbar.setTitle(busNo + "路 " + direction_m);
 
         setSupportActionBar(toolbar);
-    }
-
-    public boolean saveDirection(String domainName) {
-        SharedPreferences.Editor editor = getSharedPreferences("1024", MODE_PRIVATE).edit();
-        editor.putString("domain", domainName);
-        return editor.commit();
-    }
-
-    public String loadDirection() {
-        //SharedPreferences editor = getSharedPreferences("1024", MODE_PRIVATE);
-        //return editor.getString("domain", "www.t66y.com");
-        return preferences.getString(Config.KEY_BUS_DIRECTIONS_LIST, "1");
     }
 
     // 将数据填充到ListView中
@@ -141,23 +125,6 @@ public class MainActivity extends AppCompatActivity {
             infoListView.setAdapter(adapter);
         }
         dialog.dismiss();  // 关闭窗口
-    }
-
-    private void addNotification(String showText) {
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext());
-        builder.setSmallIcon(R.drawable.settings_ic_bus);
-        builder.setContentTitle("Shanghai Bus");
-        builder.setContentText(showText);
-        builder.setContentInfo("Info");
-
-        Intent notificationIntent = new Intent(getApplicationContext(), MainActivity.class);
-        PendingIntent contentIntent = PendingIntent.getActivity(getApplicationContext(), 0, notificationIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT);
-        builder.setContentIntent(contentIntent);
-
-        // Add as notification
-        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        manager.notify(0, builder.build());
     }
 
     Runnable runnable = new Runnable() {
@@ -547,18 +514,6 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         return false;
-    }
-
-    public void toXiaoaiTTS(){
-        /* 新建一个Intent对象 */
-        Intent intent = new Intent();
-        intent.putExtra("name","XiaoAi");
-        /* 指定intent要启动的类 */
-        intent.setClass(MainActivity.this, XiaoaiChat.class);
-        /* 启动一个新的Activity */
-        MainActivity.this.startActivity(intent);
-        /* 关闭当前的Activity */
-        MainActivity.this.finish();
     }
 
     public void toXiaoaiDevices(){
